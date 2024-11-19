@@ -16,9 +16,9 @@ public class ServerThread extends Thread {
 	int num1, num2;
 	String choice;
 	
-	private static Map<String, String> accounts = new HashMap<>(); // username-password store
-    private static Map<Integer, String> employees = new HashMap<>(); // employee ID-name store
-    private static int employeeIdCounter = 1;
+	private static Map<String, Report> reports = new HashMap<>(); // username-password store
+    private static Map<String, Employee> accounts = new HashMap<>(); // Report ID-name store
+    private static int ReportIdCounter = 1;
 	
 	public ServerThread(Socket myConnection)
 	{
@@ -37,13 +37,13 @@ public class ServerThread extends Thread {
                 System.out.println(command);
                 System.out.println(command.length());
 
-                if ("1".equalsIgnoreCase(command)) {
+                if ("REGISTER".equalsIgnoreCase(command)) {
                     register();
-                } else if ("2".equalsIgnoreCase(command)) {
+                } else if ("LOGIN".equalsIgnoreCase(command)) {
                     if (login()) {
-                        manageEmployees();
+                        manageReports();
                     }
-                } else if ("3".equalsIgnoreCase(command)) {
+                } else if ("EXIT".equalsIgnoreCase(command)) {
                 	sendMessage("Goodbye!");
                 	in.readObject();
                     break;
@@ -87,16 +87,65 @@ public class ServerThread extends Thread {
 	}
 	
 	private void register() throws IOException, ClassNotFoundException {
-        sendMessage("Enter username:");
-        String username = (String)in.readObject();
+        sendMessage("Enter email:");
+        String email = (String)in.readObject();
         sendMessage("Enter password:");
         String password = (String)in.readObject();
 
-        if (accounts.containsKey(username)) {
-            sendMessage("Username already exists.");
+        if (accounts.containsKey(email)) {
+            sendMessage("Account with this email already exists.");
             in.readObject();
         } else {
-            accounts.put(username, password);
+        	
+        	sendMessage("Enter name:");
+            String name = (String)in.readObject();
+        	
+        	StringBuilder text = new StringBuilder("Enter department: \n");
+        	for (Department d: Department.values()) {  
+        	    text.append(d + "\n"); 
+        	}
+        	String deptStr;
+        	boolean isValid = false;
+        	Department dept = Department.Cork;
+        	do {
+        		sendMessage(text.toString());
+            	deptStr = (String)in.readObject();
+            	for (Department d: Department.values()) {
+            		if (deptStr.equalsIgnoreCase(d.name()) ) { 
+            			dept = d;
+            			isValid = true;
+            		}
+            	}
+        	} while (!isValid);
+        	
+        	
+        	text = new StringBuilder("Enter role: \n");
+        	for (Role r: Role.values()) { 
+        	    text.append(r + "\n"); 
+        	}
+        	String roleStr;
+        	Role role = Role.BackEnd;
+        	isValid = false;
+        	do {
+        		sendMessage(text.toString());
+            	roleStr = (String)in.readObject();
+            	for (Role r: Role.values()) {
+            		if (roleStr.equalsIgnoreCase(r.name()) ) { 
+            			role = r;
+            			isValid = true;
+            		}
+            	}
+        	} while (!isValid);
+        	
+            accounts.put("123",
+            		new Employee(
+                    		name,
+                    		"hello",
+                    		email,
+                    		password,
+                    		dept,
+                    		role
+                    		));
             sendMessage("Registration successful!");
             in.readObject();
         }
@@ -119,19 +168,19 @@ public class ServerThread extends Thread {
         }
     }
 
-    private void manageEmployees() throws IOException, ClassNotFoundException {
+    private void manageReports() throws IOException, ClassNotFoundException {
         while (true) {
-            sendMessage("Employee Management: ADD, VIEW, UPDATE, DELETE, or LOGOUT");
+            sendMessage("Report Management: ADD, VIEW, UPDATE, DELETE, or LOGOUT");
             String command = (String)in.readObject();
 
             if ("ADD".equalsIgnoreCase(command)) {
-                addEmployee();
+                addReport();
             } else if ("VIEW".equalsIgnoreCase(command)) {
-                viewEmployees();
+                viewReports();
             } else if ("UPDATE".equalsIgnoreCase(command)) {
-                updateEmployee();
+                updateReport();
             } else if ("DELETE".equalsIgnoreCase(command)) {
-                deleteEmployee();
+                deleteReport();
             } else if ("LOGOUT".equalsIgnoreCase(command)) {
                 sendMessage("Logged out.");
                 in.readObject();
@@ -143,52 +192,53 @@ public class ServerThread extends Thread {
         }
     }
 
-    private void addEmployee() throws IOException, ClassNotFoundException {
-        sendMessage("Enter employee name:");
+    private void addReport() throws IOException, ClassNotFoundException {
+        sendMessage("Enter Report name:");
         String name = (String)in.readObject();
-        employees.put(employeeIdCounter, name);
-        sendMessage("Employee added with ID: " + employeeIdCounter);
+        
+        reports.put("EMP" + ReportIdCounter, new Report(name, null, null, name, null));
+        sendMessage("Report added with ID: " + ReportIdCounter);
         in.readObject();
-        employeeIdCounter++;
+        ReportIdCounter++;
     }
 
-    private void viewEmployees() throws ClassNotFoundException, IOException {
-        if (employees.isEmpty()) {
-            sendMessage("No employees found.");
+    private void viewReports() throws ClassNotFoundException, IOException {
+        if (reports.isEmpty()) {
+            sendMessage("No Reports found.");
             in.readObject();
         } else {
-        	StringBuilder employeeList = new StringBuilder("Employee List:\n");
-            employees.forEach((id, name) -> {
-            	employeeList.append("ID: " + id + ", Name: " + name + "\n");
+        	StringBuilder ReportList = new StringBuilder("Report List:\n");
+            reports.forEach((id, name) -> {
+            	ReportList.append("ID: " + id + ", Name: " + name + "\n");
             });
-            sendMessage(employeeList.toString());
+            sendMessage(ReportList.toString());
             in.readObject();
         }
     }
 
-    private void updateEmployee() throws IOException, NumberFormatException, ClassNotFoundException {
-        sendMessage("Enter employee ID to update:");
-        int id = Integer.parseInt((String)in.readObject());
-        if (employees.containsKey(id)) {
+    private void updateReport() throws IOException, NumberFormatException, ClassNotFoundException {
+        sendMessage("Enter Report ID to update:");
+        String id = (String)in.readObject();
+        if (reports.containsKey(id)) {
             sendMessage("Enter new name:");
             String newName = (String)in.readObject();
-            employees.put(id, newName);
-            sendMessage("Employee updated.");
+            reports.put(id, new Report(newName, null, null, newName, null));
+            sendMessage("Report updated.");
             in.readObject();
         } else {
-            sendMessage("Employee not found.");
+            sendMessage("Report not found.");
             in.readObject();
         }
     }
 
-    private void deleteEmployee() throws IOException, NumberFormatException, ClassNotFoundException {
-        sendMessage("Enter employee ID to delete:");
+    private void deleteReport() throws IOException, NumberFormatException, ClassNotFoundException {
+        sendMessage("Enter Report ID to delete:");
         int id = Integer.parseInt((String)in.readObject());
-        if (employees.remove(id) != null) {
-            sendMessage("Employee deleted.");
+        if (reports.remove(id) != null) {
+            sendMessage("Report deleted.");
             in.readObject();
         } else {
-            sendMessage("Employee not found.");
+            sendMessage("Report not found.");
             in.readObject();
         }
     }
