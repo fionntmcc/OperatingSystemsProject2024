@@ -152,12 +152,16 @@ public class ServerThread extends Thread {
     }
 
     private boolean login() throws IOException, ClassNotFoundException {
-        sendMessage("Enter username:");
-        String username = (String)in.readObject();
+        sendMessage("Enter email:");
+        String email = (String)in.readObject();
         sendMessage("Enter password:");
         String password = (String)in.readObject();
+        
+        System.out.println(accounts.containsKey(email));
+        System.out.println(password.equals(accounts.get(email).password()));
 
-        if (password.equals(accounts.get(username))) {
+        if (accounts.containsKey(email) 
+        		&& password.equals(accounts.get(email).password())) {
             sendMessage("Login successful!");
             in.readObject();
             return true;
