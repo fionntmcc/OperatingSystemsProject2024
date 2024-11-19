@@ -13,7 +13,7 @@ public class Requester{
 		
 		input = new Scanner(System.in);
 	}
-	void run()
+	void run() throws ClassNotFoundException
 	{
 		try{
 			//1. creating a socket to connect to the server
@@ -26,43 +26,21 @@ public class Requester{
 			in = new ObjectInputStream(requestSocket.getInputStream());
 			//3: Communicating with the server
 			
-			try 
-			{
-				do
-				{	
-					// Choose between addition and subtraction
-					String choice = "";
-					System.out.println((String)in.readObject());
-					do {
-						choice = input.nextLine();
-						System.out.println("Choice: " + choice);
-					} while (!(choice.equals("1") || choice.equals("2") || choice.equals("3")));
-					sendMessage(choice);
-					// num1
-					System.out.println((String)in.readObject());
-					sendMessage(input.nextLine());
-					
-					if (choice.equals("1") || choice.equals("2")) {
-						// num2
-						System.out.println((String)in.readObject());
-						sendMessage(input.nextLine());
-					}
-					
-					// result
-					System.out.println((String)in.readObject());
-					
-					// repeat
-					System.out.println((String)in.readObject());
-					message = input.nextLine();
-					sendMessage(message);
-				
-				}while(message.equalsIgnoreCase("1")); // do-while to repeat
-			} 
+			 System.out.println("Connected to the server.");
+
+	            String serverResponse;
+	            while ((serverResponse = (String)in.readObject()) != null) {
+	                System.out.println(serverResponse);
+	                if (serverResponse.startsWith("Goodbye")) {
+	                    break;
+	                }
+
+	                sendMessage(input.nextLine());
+	            }
 			
-			catch (ClassNotFoundException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}			
+			
+			
+						
 		}
 		catch(UnknownHostException unknownHost){
 			System.err.println("You are trying to connect to an unknown host!");
@@ -82,6 +60,7 @@ public class Requester{
 			}
 		}
 	}
+	
 	void sendMessage(String msg)
 	{
 		try{
@@ -93,7 +72,7 @@ public class Requester{
 			ioException.printStackTrace();
 		}
 	}
-	public static void main(String args[])
+	public static void main(String args[]) throws ClassNotFoundException
 	{
 		Requester client = new Requester();
 		client.run();
