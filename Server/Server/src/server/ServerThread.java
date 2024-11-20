@@ -303,7 +303,7 @@ public class ServerThread extends Thread {
                 newEmpId = (String)in.readObject();
         	} while (!newEmpId.equalsIgnoreCase("NULL") && !empIds.contains(newEmpId.toLowerCase()));
         	            
-            reports.get(id).setAssignedId(newEmpId);
+            reports.get(id.toLowerCase()).setAssignedId(newEmpId);
             
             // update status
          // ReportType entry
