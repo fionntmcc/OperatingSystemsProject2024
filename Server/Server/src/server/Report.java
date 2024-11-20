@@ -4,28 +4,25 @@ import java.time.LocalDate;
 
 public class Report {
 	
+	private String id;
 	private ReportType type;
 	private LocalDate date;
 	private String creatorId, assignedId;
 	private ReportStatus status;
 	
-	
-	private static int idCounter = 0;
-	private int idNum;
-	
 	public Report( 
+			String id,
 			ReportType type, 
 			LocalDate date, 
 			String creatorId,
 			String assignedId,
 			ReportStatus status) {
+		this.id = id;
 		this.type = type;
 		this.date = date;
 		this.creatorId = creatorId;
 		this.assignedId = assignedId;
 		this.status = status;
-		
-		this.idNum = idCounter++;
 	}
 	
 	public void setAssignedId(String newId) {
@@ -57,7 +54,7 @@ public class Report {
 	}
 
 	public String id() {
-		return ("R" + idNum);
+		return id;
 	}
 
 	@Override

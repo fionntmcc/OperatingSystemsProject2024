@@ -9,19 +9,16 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 public class ServerThread extends Thread {
 
 	private Socket connection;
 	private ObjectOutputStream out;
 	private ObjectInputStream in;
-	private String msg;
-	int num1, num2;
-	String choice;
 	
-	private static Map<String, Report> reports = new HashMap<>(); // username-password store
-    private static Map<String, Employee> accounts = new HashMap<>(); // Report ID-name store
-    private static int ReportIdCounter = 1;
+	//private static Map<String, Report> reports = new HashMap<>(); // username-password store
+    //private static Map<String, Employee> accounts = new HashMap<>(); // Report ID-name store
     private String curLoginId = null;
 	
 	public ServerThread(Socket myConnection)
@@ -74,29 +71,25 @@ public class ServerThread extends Thread {
 	}
 	
 	
-	
-	private void menu() {
-		sendMessage("----- Accident Report Service -----\n"
-				+ "1. Create Report\n"
-				+ "2. Retrieve all Reports\n"
-				+ "3. Assign Report\n"
-				+ "4. View all of your Reports\n"
-				+ "5. Update password\n");
-	}
-	
-	private void loginMenu() {
-		sendMessage("----- Accident Report Service -----\n"
-				+ "1. Register\n"
-				+ "2. Login\n");
-	}
-	
 	private void register() throws IOException, ClassNotFoundException {
-        sendMessage("Enter email:");
-        String email = (String)in.readObject();
-        sendMessage("Enter password:");
-        String password = (String)in.readObject();
+		String email;
+		do {
+			sendMessage("Enter email:");
+	        email = (String)in.readObject();
+		} while	(!isValidEmail(email));
+        
+		String password;
+        do {
+        	sendMessage("Enter password: \n"
+        			+ "Password must contain: \n"
+        			+ "-> at least 1 uppercase letter \n"
+        			+ "-> at least 1 number \n"
+        			+ "-> at least 1 symbol \n"
+        			+ "-> at least 8 characters");
+            password = (String)in.readObject();
+        } while (!isValidPassword(password));
 
-        if (accounts.containsKey(email)) {
+        if (Provider.containsEmployeeKey(email)) {
             sendMessage("Account with this email already exists.");
             in.readObject();
         } else {
@@ -141,8 +134,9 @@ public class ServerThread extends Thread {
             	}
         	} while (!isValid);
         	
-            accounts.put(email, 
+            Provider.putEmployee(
             		new Employee(
+            		("emp" + Provider.getNumEmployees()),
             		name,
             		email,
             		password,
@@ -150,7 +144,7 @@ public class ServerThread extends Thread {
             		role
             		));
             
-            sendMessage("Registration successful!\n"
+            sendMessage("Registration successful! \n"
             		+ "Registered with " + email);
             in.readObject();
         }
@@ -162,11 +156,11 @@ public class ServerThread extends Thread {
         sendMessage("Enter password:");
         String password = (String)in.readObject();
         
-        if ((accounts.containsKey(email) 
-        		&& password.equals(accounts.get(email).password()))) {
+        if ((Provider.containsEmployeeKey(email) 
+        		&& password.equals(Provider.getEmployee(email).password()))) {
             sendMessage("Login successful!");
             in.readObject();
-            curLoginId = accounts.get(email).id();
+            curLoginId = Provider.getEmployee(email).id();
             return true;
         } else {
             sendMessage("Invalid username or password.");
@@ -195,6 +189,7 @@ public class ServerThread extends Thread {
                 seeMyReports();
             } else if ("LOGOUT".equalsIgnoreCase(command)) {
             	curLoginId = null;
+            	Provider.writeFiles();
                 sendMessage("Logged out.");
                 in.readObject();
                 break;
@@ -252,7 +247,7 @@ public class ServerThread extends Thread {
         // empId entry
         StringBuilder empText = new StringBuilder("Enter Assigned Employee (Enter NULL if unassigned): \n");
         Set<String> ids = new HashSet<String>();
-        accounts.forEach((email, account) -> {
+        Provider.employeeMap().forEach((email, account) -> {
         	empText.append(account.id() + " - " + account.name() + "\n");
         	ids.add(account.id().toLowerCase());
         });
@@ -263,20 +258,23 @@ public class ServerThread extends Thread {
         	assignedId = (String)in.readObject();
     	} while (!assignedId.equalsIgnoreCase("NULL") && !ids.contains(assignedId.toLowerCase()));
         
-        Report report = new Report(repType, date, curLoginId, assignedId, repStatus);
-        
-        reports.put(report.id().toLowerCase(), report);
-        sendMessage("Report added with ID: " + report.id());
+        Provider.putReport(new Report(("r" + Provider.getNumReports()), 
+        		repType, 
+        		date, 
+        		curLoginId, 
+        		assignedId, 
+        		repStatus));
+        sendMessage("Report added");
         in.readObject();
     }
 
     private void viewReports() throws ClassNotFoundException, IOException {
-        if (reports.isEmpty()) {
+        if (Provider.isReportsEmpty()) {
             sendMessage("No Reports found.");
             in.readObject();
         } else {
         	StringBuilder reportList = new StringBuilder("----- Report List -----\n");
-            reports.forEach((id, report) -> {
+            Provider.reportMap().forEach((id, report) -> {
             	reportList.append("Report " + report.id() + ": \n" + 
             					report.toString() + "\n");
             });
@@ -287,13 +285,12 @@ public class ServerThread extends Thread {
 
     // reassign / change status of report with given id
     private void updateReport() throws IOException, ClassNotFoundException {
-    	System.out.println(reports.toString());
         sendMessage("Enter Report ID to update:");
         String id = (String)in.readObject();
-        if (reports.containsKey(id.toLowerCase())) {
+        if (Provider.containsReportKey(id.toLowerCase())) {
         	StringBuilder assignedText = new StringBuilder("Enter new assigned employee ID (Enter NULL if unassigned): \n");
         	Set<String> empIds = new HashSet<>();
-        	accounts.forEach((email, employee) -> {
+        	Provider.employeeMap().forEach((email, employee) -> {
             	assignedText.append(employee.id() + " - " + employee.name() + "\n");
             	empIds.add(employee.id().toLowerCase());
             });
@@ -302,8 +299,9 @@ public class ServerThread extends Thread {
         		sendMessage(assignedText.toString());
                 newEmpId = (String)in.readObject();
         	} while (!newEmpId.equalsIgnoreCase("NULL") && !empIds.contains(newEmpId.toLowerCase()));
+        	
         	            
-            reports.get(id.toLowerCase()).setAssignedId(newEmpId);
+            Provider.getReport(id.toLowerCase()).setAssignedId(newEmpId);
             
             // update status
          // ReportType entry
@@ -325,7 +323,7 @@ public class ServerThread extends Thread {
             	}
         	} while (!isValid);
         	
-        	reports.get(id.toLowerCase()).setStatus(status);
+        	Provider.getReport(id.toLowerCase()).setStatus(status);
             
             sendMessage("Report updated.");
             in.readObject();
@@ -336,12 +334,12 @@ public class ServerThread extends Thread {
     }
 
     private void seeMyReports() throws IOException, NumberFormatException, ClassNotFoundException {
-    	if (reports.isEmpty()) {
+    	if (Provider.isReportsEmpty()) {
             sendMessage("No Reports found.");
             in.readObject();
         } else {
         	StringBuilder reportList = new StringBuilder("----- Your Report List -----\n\n");
-            reports.forEach((id, report) -> {
+            Provider.reportMap().forEach((id, report) -> {
             	if (report.assignedId().equalsIgnoreCase(curLoginId)) {
             		reportList.append("Report " + report.id() + ": \n" + 
         					report.toString() + "\n");
@@ -353,42 +351,46 @@ public class ServerThread extends Thread {
         }
     }
     
-    /*
-    private void deleteReport() throws IOException, NumberFormatException, ClassNotFoundException {
-        sendMessage("Enter Report ID to delete:");
-        int id = Integer.parseInt((String)in.readObject());
-        if (reports.remove(id) != null) {
-            sendMessage("Report deleted.");
-            in.readObject();
-        } else {
-            sendMessage("Report not found.");
-            in.readObject();
+    private static boolean isValidEmail(String email) {
+        if (email == null || email.isEmpty()) {
+            return false;
         }
+
+        // Define the regex pattern for a valid email
+        String emailRegex = "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$";
+
+        // Use the Pattern class to match the regex against the input email
+        Pattern pattern = Pattern.compile(emailRegex);
+        return pattern.matcher(email).matches();
     }
-    */
     
-    /*
-    private Object userEnumType(enum E) {
-    	StringBuilder text = new StringBuilder("Enter x: \n");
-    	for (E value: E.values()) {  
-    	    text.append(value + "\n"); 
-    	}
-    	
-    	String valueStr;
-    	boolean isValid = false;
-    	E eType;
-    	do {
-    		sendMessage(text.toString());
-        	valueStr = (String)in.readObject();
-        	for (E value: E.values()) {
-        		if (valueStr.equalsIgnoreCase(value.name()) ) { 
-        			eType = value;
-        			isValid = true;
-        		}
-        	}
-    	} while (!isValid);
+    public static boolean isValidPassword(String password) {
+        if (password == null || password.length() < 8) {
+            return false; // Minimum length of 8 characters
+        }
+
+        boolean hasUpperCase = false;
+        boolean hasNumber = false;
+        boolean hasSymbol = false;
+
+        for (char c : password.toCharArray()) {
+            if (Character.isUpperCase(c)) {
+                hasUpperCase = true;
+            } else if (Character.isDigit(c)) {
+                hasNumber = true;
+            } else if (!Character.isLetterOrDigit(c)) {
+                hasSymbol = true;
+            }
+
+            // If all criteria are met, no need to continue checking
+            if (hasUpperCase && hasNumber && hasSymbol) {
+                return true;
+            }
+        }
+
+        // Return false if any of the criteria is not met
+        return hasUpperCase && hasNumber && hasSymbol;
     }
-    */
 	
 	private void sendMessage(String msg)
 	{

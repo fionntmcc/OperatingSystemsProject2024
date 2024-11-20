@@ -1,28 +1,27 @@
 package server;
 
 public class Employee {
-	
-	private static int idCounter = 0;
-	private int idNum;
-	private String name, email, password;
+
+	private String id, name, email, password;
 	private Department dept;
 	private Role role;
 	
-	public Employee(String name, 
+	public Employee(String id,
+			String name, 
 			String email,
 			String password,
 			Department dept,
 			Role role) {
+		this.id = id;
 		this.name = name;
 		this.email = email;
 		this.password = password;
 		this.dept = dept;
 		this.role = role;
-		this.idNum = idCounter++;
 	}
 	
 	public String id() {
-		return ("EMP" + idNum);
+		return id;
 	}
 	
 	public String name() {
@@ -51,7 +50,7 @@ public class Employee {
 				"Name: " + name() + "\n" +
 				"Email: " + email() + "\n" +
 				"Dept: " + dept() + "\n" +
-				"Role: " + id() + "\n" +
+				"Role: " + role() + "\n" +
 				"Password: " + password() + "\n"
 				);
 	}

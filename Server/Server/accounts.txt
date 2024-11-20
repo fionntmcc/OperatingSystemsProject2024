@@ -1,0 +1,4 @@
+emp3 woo woo@woo.com Password3! Cork BackEnd
+emp1 mart mart@gmail.com Password2! Cork FrontEnd
+emp0 fionn fionntmcc04@gmail.com Password1! Galway BackEnd
+emp2 Adam a@a.com Password1! Mayo BackEnd
