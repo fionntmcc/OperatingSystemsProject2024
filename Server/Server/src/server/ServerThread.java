@@ -4,8 +4,11 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
+import java.time.LocalDate;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 public class ServerThread extends Thread {
 
@@ -70,7 +73,7 @@ public class ServerThread extends Thread {
 	}
 	
 	
-	
+	/*
 	private void menu() {
 		sendMessage("----- Accident Report Service -----\n"
 				+ "1. Create Report\n"
@@ -85,6 +88,7 @@ public class ServerThread extends Thread {
 				+ "1. Register\n"
 				+ "2. Login\n");
 	}
+    */
 	
 	private void register() throws IOException, ClassNotFoundException {
         sendMessage("Enter email:");
@@ -137,16 +141,17 @@ public class ServerThread extends Thread {
             	}
         	} while (!isValid);
         	
-            accounts.put("123",
+            accounts.put(email, 
             		new Employee(
-                    		name,
-                    		"hello",
-                    		email,
-                    		password,
-                    		dept,
-                    		role
-                    		));
-            sendMessage("Registration successful!");
+            		name,
+            		email,
+            		password,
+            		dept,
+            		role
+            		));
+            
+            sendMessage("Registration successful!\n"
+            		+ "Registered with " + email);
             in.readObject();
         }
     }
@@ -158,10 +163,11 @@ public class ServerThread extends Thread {
         String password = (String)in.readObject();
         
         System.out.println(accounts.containsKey(email));
-        System.out.println(password.equals(accounts.get(email).password()));
-
-        if (accounts.containsKey(email) 
-        		&& password.equals(accounts.get(email).password())) {
+        //System.out.println(password.equals(accounts.get(email).password()));
+        System.out.println("Password " + accounts.get(email).password());
+        System.out.println("Account" + accounts.get(email).toString());
+        if ((accounts.containsKey(email) 
+        		&& password.equals(accounts.get(email).password()))) {
             sendMessage("Login successful!");
             in.readObject();
             return true;
@@ -197,13 +203,68 @@ public class ServerThread extends Thread {
     }
 
     private void addReport() throws IOException, ClassNotFoundException {
-        sendMessage("Enter Report name:");
-        String name = (String)in.readObject();
+    	
+    	// ReportType entry
+    	StringBuilder text = new StringBuilder("Enter Report Type: \n");
+    	for (ReportType rt: ReportType.values()) {  
+    	    text.append(rt + "\n"); 
+    	}
+    	String repTypeStr;
+    	boolean isValid = false;
+    	ReportType repType = ReportType.ACCIDENT;
+    	do {
+    		sendMessage(text.toString());
+        	repTypeStr = (String)in.readObject();
+        	for (ReportType d: ReportType.values()) {
+        		if (repTypeStr.equalsIgnoreCase(d.name()) ) { 
+        			repType = d;
+        			isValid = true;
+        		}
+        	}
+    	} while (!isValid);
+    	
+    	// ReportStatus entry
+    	text = new StringBuilder("Enter Report Status: \n");
+    	for (ReportStatus rs : ReportStatus.values()) {  
+    	    text.append(rs + "\n"); 
+    	}
+    	String repStatusStr;
+    	isValid = false;
+    	ReportStatus repStatus = ReportStatus.ASSIGNED;
+    	do {
+    		sendMessage(text.toString());
+        	repStatusStr = (String)in.readObject();
+        	for (ReportStatus rs: ReportStatus.values()) {
+        		if (repStatusStr.equalsIgnoreCase(rs.name()) ) { 
+        			repStatus = rs;
+        			isValid = true;
+        		}
+        	}
+    	} while (!isValid);
+    	
+    	// WILL CHANGE
+    	// LocalDate entry - LocalDate.now() for the moment 
+        LocalDate date = LocalDate.now();
         
-        reports.put("EMP" + ReportIdCounter, new Report(name, null, null, name, null));
-        sendMessage("Report added with ID: " + ReportIdCounter);
+        // empId entry
+        StringBuilder empText = new StringBuilder("Enter Assigned Employee: \n");
+        Set<String> ids = new HashSet<String>();
+        accounts.forEach((email, account) -> {
+        	empText.append(account.id() + " - " + account.name() + "\n");
+        	ids.add(account.id().toLowerCase());
+        });
+    	String empId;
+    	isValid = false;
+    	do {
+    		sendMessage(empText.toString());
+        	empId = (String)in.readObject();
+    	} while (!ids.contains(empId.toLowerCase()));
+        
+        Report report = new Report(repType, date, empId, repStatus);
+        
+        reports.put(report.id(), report);
+        sendMessage("Report added with ID: " + report.id());
         in.readObject();
-        ReportIdCounter++;
     }
 
     private void viewReports() throws ClassNotFoundException, IOException {
@@ -212,8 +273,9 @@ public class ServerThread extends Thread {
             in.readObject();
         } else {
         	StringBuilder ReportList = new StringBuilder("Report List:\n");
-            reports.forEach((id, name) -> {
-            	ReportList.append("ID: " + id + ", Name: " + name + "\n");
+            reports.forEach((id, report) -> {
+            	ReportList.append("Report " + report.id() + ": \n" + 
+            					report.toString() + "\n");
             });
             sendMessage(ReportList.toString());
             in.readObject();
@@ -226,7 +288,7 @@ public class ServerThread extends Thread {
         if (reports.containsKey(id)) {
             sendMessage("Enter new name:");
             String newName = (String)in.readObject();
-            reports.put(id, new Report(newName, null, null, newName, null));
+            reports.put(id, new Report(null, null, newName, null));
             sendMessage("Report updated.");
             in.readObject();
         } else {
@@ -246,6 +308,29 @@ public class ServerThread extends Thread {
             in.readObject();
         }
     }
+    
+    /*
+    private Object userEnumType(enum E) {
+    	StringBuilder text = new StringBuilder("Enter x: \n");
+    	for (E value: E.values()) {  
+    	    text.append(value + "\n"); 
+    	}
+    	
+    	String valueStr;
+    	boolean isValid = false;
+    	E eType;
+    	do {
+    		sendMessage(text.toString());
+        	valueStr = (String)in.readObject();
+        	for (E value: E.values()) {
+        		if (valueStr.equalsIgnoreCase(value.name()) ) { 
+        			eType = value;
+        			isValid = true;
+        		}
+        	}
+    	} while (!isValid);
+    }
+    */
 	
 	private void sendMessage(String msg)
 	{
