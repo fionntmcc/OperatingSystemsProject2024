@@ -22,6 +22,7 @@ public class ServerThread extends Thread {
 	private static Map<String, Report> reports = new HashMap<>(); // username-password store
     private static Map<String, Employee> accounts = new HashMap<>(); // Report ID-name store
     private static int ReportIdCounter = 1;
+    private String curLoginId = null;
 	
 	public ServerThread(Socket myConnection)
 	{
@@ -73,7 +74,7 @@ public class ServerThread extends Thread {
 	}
 	
 	
-	/*
+	
 	private void menu() {
 		sendMessage("----- Accident Report Service -----\n"
 				+ "1. Create Report\n"
@@ -88,7 +89,6 @@ public class ServerThread extends Thread {
 				+ "1. Register\n"
 				+ "2. Login\n");
 	}
-    */
 	
 	private void register() throws IOException, ClassNotFoundException {
         sendMessage("Enter email:");
@@ -162,14 +162,11 @@ public class ServerThread extends Thread {
         sendMessage("Enter password:");
         String password = (String)in.readObject();
         
-        System.out.println(accounts.containsKey(email));
-        //System.out.println(password.equals(accounts.get(email).password()));
-        System.out.println("Password " + accounts.get(email).password());
-        System.out.println("Account" + accounts.get(email).toString());
         if ((accounts.containsKey(email) 
         		&& password.equals(accounts.get(email).password()))) {
             sendMessage("Login successful!");
             in.readObject();
+            curLoginId = accounts.get(email).id();
             return true;
         } else {
             sendMessage("Invalid username or password.");
@@ -180,7 +177,12 @@ public class ServerThread extends Thread {
 
     private void manageReports() throws IOException, ClassNotFoundException {
         while (true) {
-            sendMessage("Report Management: ADD, VIEW, UPDATE, DELETE, or LOGOUT");
+            sendMessage("Report Management: \n"
+            		+ "ADD a report \n"
+            		+ "VIEW all reports \n"
+            		+ "UPDATE report status \n"
+            		+ "SEE my reports \n"
+            		+ "LOGOUT \n");
             String command = (String)in.readObject();
 
             if ("ADD".equalsIgnoreCase(command)) {
@@ -189,9 +191,10 @@ public class ServerThread extends Thread {
                 viewReports();
             } else if ("UPDATE".equalsIgnoreCase(command)) {
                 updateReport();
-            } else if ("DELETE".equalsIgnoreCase(command)) {
-                deleteReport();
+            } else if ("SEE".equalsIgnoreCase(command)) {
+                seeMyReports();
             } else if ("LOGOUT".equalsIgnoreCase(command)) {
+            	curLoginId = null;
                 sendMessage("Logged out.");
                 in.readObject();
                 break;
@@ -224,15 +227,15 @@ public class ServerThread extends Thread {
     	} while (!isValid);
     	
     	// ReportStatus entry
-    	text = new StringBuilder("Enter Report Status: \n");
+    	StringBuilder statusText = new StringBuilder("Enter Report Status: \n");
     	for (ReportStatus rs : ReportStatus.values()) {  
-    	    text.append(rs + "\n"); 
+    	    statusText.append(rs + "\n"); 
     	}
     	String repStatusStr;
     	isValid = false;
     	ReportStatus repStatus = ReportStatus.ASSIGNED;
     	do {
-    		sendMessage(text.toString());
+    		sendMessage(statusText.toString());
         	repStatusStr = (String)in.readObject();
         	for (ReportStatus rs: ReportStatus.values()) {
         		if (repStatusStr.equalsIgnoreCase(rs.name()) ) { 
@@ -247,22 +250,22 @@ public class ServerThread extends Thread {
         LocalDate date = LocalDate.now();
         
         // empId entry
-        StringBuilder empText = new StringBuilder("Enter Assigned Employee: \n");
+        StringBuilder empText = new StringBuilder("Enter Assigned Employee (Enter NULL if unassigned): \n");
         Set<String> ids = new HashSet<String>();
         accounts.forEach((email, account) -> {
         	empText.append(account.id() + " - " + account.name() + "\n");
         	ids.add(account.id().toLowerCase());
         });
-    	String empId;
+    	String assignedId;
     	isValid = false;
     	do {
     		sendMessage(empText.toString());
-        	empId = (String)in.readObject();
-    	} while (!ids.contains(empId.toLowerCase()));
+        	assignedId = (String)in.readObject();
+    	} while (!assignedId.equalsIgnoreCase("NULL") && !ids.contains(assignedId.toLowerCase()));
         
-        Report report = new Report(repType, date, empId, repStatus);
+        Report report = new Report(repType, date, curLoginId, assignedId, repStatus);
         
-        reports.put(report.id(), report);
+        reports.put(report.id().toLowerCase(), report);
         sendMessage("Report added with ID: " + report.id());
         in.readObject();
     }
@@ -272,23 +275,58 @@ public class ServerThread extends Thread {
             sendMessage("No Reports found.");
             in.readObject();
         } else {
-        	StringBuilder ReportList = new StringBuilder("Report List:\n");
+        	StringBuilder reportList = new StringBuilder("----- Report List -----\n");
             reports.forEach((id, report) -> {
-            	ReportList.append("Report " + report.id() + ": \n" + 
+            	reportList.append("Report " + report.id() + ": \n" + 
             					report.toString() + "\n");
             });
-            sendMessage(ReportList.toString());
+            sendMessage(reportList.toString());
             in.readObject();
         }
     }
 
-    private void updateReport() throws IOException, NumberFormatException, ClassNotFoundException {
+    // reassign / change status of report with given id
+    private void updateReport() throws IOException, ClassNotFoundException {
+    	System.out.println(reports.toString());
         sendMessage("Enter Report ID to update:");
         String id = (String)in.readObject();
-        if (reports.containsKey(id)) {
-            sendMessage("Enter new name:");
-            String newName = (String)in.readObject();
-            reports.put(id, new Report(null, null, newName, null));
+        if (reports.containsKey(id.toLowerCase())) {
+        	StringBuilder assignedText = new StringBuilder("Enter new assigned employee ID (Enter NULL if unassigned): \n");
+        	Set<String> empIds = new HashSet<>();
+        	accounts.forEach((email, employee) -> {
+            	assignedText.append(employee.id() + " - " + employee.name() + "\n");
+            	empIds.add(employee.id().toLowerCase());
+            });
+        	String newEmpId;
+        	do {
+        		sendMessage(assignedText.toString());
+                newEmpId = (String)in.readObject();
+        	} while (!newEmpId.equalsIgnoreCase("NULL") && !empIds.contains(newEmpId.toLowerCase()));
+        	            
+            reports.get(id).setAssignedId(newEmpId);
+            
+            // update status
+         // ReportType entry
+        	StringBuilder statusText = new StringBuilder("Enter Status: \n");
+        	for (ReportStatus rs: ReportStatus.values()) {  
+        	    statusText.append(rs + "\n"); 
+        	}
+        	String statusStr;
+        	boolean isValid = false;
+        	ReportStatus status = ReportStatus.ASSIGNED;
+        	do {
+        		sendMessage(statusText.toString());
+            	statusStr = (String)in.readObject();
+            	for (ReportStatus rs: ReportStatus.values()) {
+            		if (statusStr.equalsIgnoreCase(rs.name()) ) { 
+            			status = rs;
+            			isValid = true;
+            		}
+            	}
+        	} while (!isValid);
+        	
+        	reports.get(id.toLowerCase()).setStatus(status);
+            
             sendMessage("Report updated.");
             in.readObject();
         } else {
@@ -297,6 +335,25 @@ public class ServerThread extends Thread {
         }
     }
 
+    private void seeMyReports() throws IOException, NumberFormatException, ClassNotFoundException {
+    	if (reports.isEmpty()) {
+            sendMessage("No Reports found.");
+            in.readObject();
+        } else {
+        	StringBuilder reportList = new StringBuilder("----- Your Report List -----\n\n");
+            reports.forEach((id, report) -> {
+            	if (report.assignedId().equalsIgnoreCase(curLoginId)) {
+            		reportList.append("Report " + report.id() + ": \n" + 
+        					report.toString() + "\n");
+            	}
+            	
+            });
+            sendMessage(reportList.toString());
+            in.readObject();
+        }
+    }
+    
+    /*
     private void deleteReport() throws IOException, NumberFormatException, ClassNotFoundException {
         sendMessage("Enter Report ID to delete:");
         int id = Integer.parseInt((String)in.readObject());
@@ -308,6 +365,7 @@ public class ServerThread extends Thread {
             in.readObject();
         }
     }
+    */
     
     /*
     private Object userEnumType(enum E) {

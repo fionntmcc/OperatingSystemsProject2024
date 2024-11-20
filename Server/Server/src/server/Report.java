@@ -6,7 +6,7 @@ public class Report {
 	
 	private ReportType type;
 	private LocalDate date;
-	private String empId;
+	private String creatorId, assignedId;
 	private ReportStatus status;
 	
 	
@@ -16,39 +16,45 @@ public class Report {
 	public Report( 
 			ReportType type, 
 			LocalDate date, 
-			String empId, 
+			String creatorId,
+			String assignedId,
 			ReportStatus status) {
 		this.type = type;
 		this.date = date;
-		this.empId = empId;
+		this.creatorId = creatorId;
+		this.assignedId = assignedId;
 		this.status = status;
 		
 		this.idNum = idCounter++;
+	}
+	
+	public void setAssignedId(String newId) {
+		this.assignedId = newId;
+	}
+	
+	public void setStatus(ReportStatus status) {
+		this.status = status;
 	}
 	
 	public ReportType type() {
 		return type;
 	}
 
-
-
 	public LocalDate date() {
 		return date;
 	}
 
-
-
-	public String empId() {
-		return empId;
+	public String creatorId() {
+		return creatorId;
 	}
-
-
+	
+	public String assignedId() {
+		return assignedId;
+	}
 
 	public ReportStatus status() {
 		return status;
 	}
-
-
 
 	public String id() {
 		return ("R" + idNum);
@@ -59,7 +65,8 @@ public class Report {
 		return ("Report id: " + id() + "\n" +
 				"Type: " + type() + "\n" +
 				"Date: " + date().toString() + "\n" +
-				"Assigned Employee: " + empId() + "\n" +
+				"Created by: " + creatorId() + "\n" +
+				"Assigned Employee: " + assignedId() + "\n" +
 				"Status: " + status() + "\n"
 				);
 	}
