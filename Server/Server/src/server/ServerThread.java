@@ -17,8 +17,6 @@ public class ServerThread extends Thread {
 	private ObjectOutputStream out;
 	private ObjectInputStream in;
 	
-	//private static Map<String, Report> reports = new HashMap<>(); // username-password store
-    //private static Map<String, Employee> accounts = new HashMap<>(); // Report ID-name store
     private String curLoginId = null;
 	
 	public ServerThread(Socket myConnection)
@@ -144,6 +142,7 @@ public class ServerThread extends Thread {
             		role
             		));
             
+            Provider.writeFiles();
             sendMessage("Registration successful! \n"
             		+ "Registered with " + email);
             in.readObject();

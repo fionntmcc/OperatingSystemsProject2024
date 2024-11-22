@@ -23,8 +23,10 @@ public class Provider{
 	
 	public static void main(String args[])
 	{
-		createEmployeeMap();
-		createReportMap();
+		employeeMap = createEmployeeMap();
+		reportMap = createReportMap();
+		
+		System.out.println(employeeMap.keySet());
 		
 		//System.out.println(employeeMap.toString());
 		//System.out.println(reportMap.toString());
@@ -54,8 +56,9 @@ public class Provider{
 		}
 	}
 	
-	private static void createEmployeeMap() {
+	private static Map<String, Employee> createEmployeeMap() {
 		File file = new File(ACCOUNT_FILE_NAME);
+		Map<String, Employee> map = new HashMap<>();
 		try {
 			Scanner fileReader = new Scanner(file);
 			while(fileReader.hasNextLine()) {
@@ -78,7 +81,7 @@ public class Provider{
 		        		}
 		        	}
 					
-					employeeMap.put(params[0], 
+					map.put(params[2], 
 							new Employee(params[0], 
 									params[1], 
 									params[2], 
@@ -91,10 +94,12 @@ public class Provider{
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+		return map;
 	}
 	
-	private static void createReportMap() {
+	private static Map<String, Report> createReportMap() {
 		File file = new File(REPORT_FILE_NAME);
+		Map<String, Report> map = new HashMap<>();
 		try {
 			Scanner fileReader = new Scanner(file);
 			while(fileReader.hasNextLine()) {
@@ -117,7 +122,7 @@ public class Provider{
 		        		}
 		        	}
 					
-					reportMap.put(params[0], 
+					map.put(params[0], 
 							new Report(params[0], 
 									type, 
 									LocalDate.parse(params[2]), 
@@ -130,6 +135,7 @@ public class Provider{
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+		return map;
 	}
 	
 	private static void writeEmployees() {
